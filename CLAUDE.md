@@ -10,8 +10,10 @@ modified.
 - `folder-icon.sh` — the script. Takes a target folder and a logo, produces a
   composited PNG, and attaches it to the folder via
   `gio set … metadata::custom-icon`.
-- `folder-og.png` — local base folder image. Prefer this over the system icon
-  by exporting `FOLDER_BASE` before calling the script (see below).
+- `README.md` — user-facing install and usage guide.
+- `.gitignore` — ignores `*.png` so personal logos and diagnostic
+  screenshots don't get committed. The script auto-detects the system's
+  Adwaita folder as its base, so no base PNG needs to be tracked.
 
 ## Usage
 
@@ -19,8 +21,8 @@ modified.
 # Apply a logo to a folder (uses system Adwaita folder as base by default)
 ./folder-icon.sh ~/Projects/work ~/logos/acme.png
 
-# Use the local folder-og.png as the base instead
-FOLDER_BASE="$(pwd)/folder-og.png" ./folder-icon.sh ~/Projects/work ~/logos/acme.png
+# Use a specific base image instead of the system default
+FOLDER_BASE=/path/to/folder.png ./folder-icon.sh ~/Projects/work ~/logos/acme.png
 
 # Larger/smaller logo overlay (default is 38% of base width)
 ./folder-icon.sh ~/Projects/work ~/logos/acme.png --scale 50
