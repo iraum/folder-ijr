@@ -1,0 +1,5 @@
+# Personal logos and diagnostic screenshots — not part of the tool itself.
+# The script auto-detects the system's Adwaita folder as its base, so no
+# base PNG needs to be committed. If you want to ship your own base, add
+# it explicitly: `git add -f your-base.png`.
+*.png
