@@ -1,14 +1,25 @@
 # folder-ijr
 
-Give individual folders a custom icon on GNOME / Nautilus — the default folder
-shape you already know, with your own logo composited onto its face. The system
-icon theme is **not** touched: only the specific folders you run the script
-against are changed, everything else keeps the default look.
+Two small GNOME / Nautilus tools that make file-manager folders more
+informative:
 
-Built and tested on Oracle Linux 9 with GNOME, but should work on any modern
-GNOME desktop (Fedora, Ubuntu, Debian with GNOME, etc.).
+1. **`folder-icon.sh`** — give an individual folder a custom icon: the
+   default folder shape with your own logo composited onto its face. No
+   theme changes, no extensions; the system icon theme is left
+   untouched.
+2. **`git-emblems/`** — a Nautilus extension that overlays a live
+   git-status dot on every folder that's a git repository, plus a
+   right-click `Git` submenu and a Properties → Git tab. Updates live
+   as you commit, stage, or fetch.
 
-## What it looks like
+Use either alone, or stack them — the git-status dot composites on top
+of whatever icon `folder-icon.sh` produced, so you get a logo'd folder
+with a live status indicator in the corner.
+
+Built and tested on Oracle Linux 9 with GNOME, but should work on any
+modern GNOME desktop (Fedora, Ubuntu, Debian with GNOME, etc.).
+
+## folder-icon.sh: what it looks like
 
 Pick any folder, point the script at a logo (PNG, JPG, or SVG), and the folder
 will render like a normal folder — but with your logo sitting on its face. No
@@ -143,11 +154,11 @@ icons differently from themed ones, and a larger native canvas helps.
 PNG needs transparency. Re-export it from your design tool with a
 transparent background, or save as SVG.
 
-## Companion: live git status emblems
+## git-emblems: live git status indicators
 
-A separate, optional Nautilus extension lives in
-[`git-emblems/`](./git-emblems/). It overlays a single small status
-dot on every folder that is a git repository, color-coded by state:
+The Nautilus extension in [`git-emblems/`](./git-emblems/) overlays a
+single small status dot on every folder that is a git repository,
+color-coded by state:
 
 | Color  | State                                                   |
 |--------|---------------------------------------------------------|
@@ -169,7 +180,7 @@ prefer that surface.
 
 Fully independent of `folder-icon.sh`: the dot sits on top of
 whatever icon the folder already has, including the custom-icon PNGs
-this script produces.
+that script produces.
 
 Install:
 
