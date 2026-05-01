@@ -23,6 +23,21 @@ Emblems update live: each repo's `.git/` directory is watched via
 trigger a re-render within a fraction of a second. No polling, no
 systemd timer.
 
+## Right-click menu
+
+Right-click any repo folder → top-level **Git — <state>** item. The
+label is a one-line headline:
+
+- `Git — clean (main)`
+- `Git — dirty — 5 changes (main)`
+- `Git — ↑2 ahead (main)`
+- `Git — ↓3 behind (main)`
+
+Hover the item to open a submenu with the full breakdown — branch,
+upstream tracking with ahead/behind, status counts, origin URL, and
+last commit. Same data as the Properties → Git tab; one less click
+to get there.
+
 ## Properties → Git tab
 
 Right-click any repo folder → **Properties** → **Git** tab. Shows:

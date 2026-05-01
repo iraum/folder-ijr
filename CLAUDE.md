@@ -18,10 +18,10 @@ modified.
   a single live git-status dot on every git-repo folder. Color encodes
   state with a fixed priority: dirty (orange) > behind (red) > ahead
   (green) > clean (gray). Exactly one emblem per repo; no stacking.
-  Also adds a "Git" tab to the right-click Properties dialog showing
-  branch / upstream / ahead-behind / origin / last commit. Sits on top
-  of `folder-icon.sh` output without modifying it. Has its own README
-  and installer; see `git-emblems/README.md`. Requires the
+  Adds a "Git" submenu to the right-click context menu (headline +
+  full breakdown) and a matching "Git" tab to the Properties dialog.
+  Sits on top of `folder-icon.sh` output without modifying it. Has its
+  own README and installer; see `git-emblems/README.md`. Requires the
   `nautilus-python` package from EPEL — same repo as ImageMagick.
 
 ## Usage
@@ -176,3 +176,9 @@ parent folder in Nautilus to see the dots; right-click a repo folder
   `git status` / `git log` / `git remote` is cheap and gives the
   most accurate snapshot. Don't try to share state with the
   emblem cache — different surfaces, different lifetimes.
+- **Right-click menu also queries fresh.** `MenuProvider.get_file_items`
+  runs the same `_gather_git_info` as the Properties tab. Menu
+  generation happens at right-click rate (human-scale), so a single
+  `git status` per click is cheap. Items are kept `sensitive=True`
+  even though they're display-only — disabling them dims the text
+  to the point that the headline becomes hard to read.

@@ -47,7 +47,8 @@ GIT_TIMEOUT_SEC = 2
 
 class GitEmblemsProvider(GObject.GObject,
                          Nautilus.InfoProvider,
-                         Nautilus.PropertyPageProvider):
+                         Nautilus.PropertyPageProvider,
+                         Nautilus.MenuProvider):
     def __init__(self):
         super().__init__()
         self._cache = {}      # path -> list[str] emblem names
@@ -243,6 +244,77 @@ class GitEmblemsProvider(GObject.GObject,
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
                 FileNotFoundError):
             return ''
+
+    # ---- Right-click menu --------------------------------------------------
+
+    def get_file_items(self, files):
+        if len(files) != 1:
+            return []
+        f = files[0]
+        if f.get_uri_scheme() != 'file' or not f.is_directory():
+            return []
+        path = unquote(urlparse(f.get_uri()).path)
+        if not os.path.exists(os.path.join(path, '.git')):
+            return []
+
+        info = self._gather_git_info(path)
+        top = Nautilus.MenuItem(
+            name='GitEmblems::menu',
+            label='Git — ' + self._menu_headline(info),
+            tip='Git status for this repo',
+        )
+        submenu = Nautilus.Menu()
+        for it in self._build_menu_items(info):
+            submenu.append_item(it)
+        top.set_submenu(submenu)
+        return [top]
+
+    def get_background_items(self, file):
+        # Right-click on the folder background of an already-open repo.
+        return self.get_file_items([file])
+
+    def _menu_headline(self, info):
+        branch = info['branch'] or '—'
+        n_changed = info['staged'] + info['modified'] + info['untracked'] + info['unmerged']
+        if n_changed:
+            noun = 'change' if n_changed == 1 else 'changes'
+            return f'dirty — {n_changed} {noun} ({branch})'
+        if info['behind'] and info['ahead']:
+            return f'↑{info["ahead"]} ↓{info["behind"]} ({branch})'
+        if info['behind']:
+            return f'↓{info["behind"]} behind ({branch})'
+        if info['ahead']:
+            return f'↑{info["ahead"]} ahead ({branch})'
+        return f'clean ({branch})'
+
+    def _build_menu_items(self, info):
+        rows = []
+        rows.append(('branch', f'Branch: {info["branch"] or "(unknown)"}'))
+        if info['upstream']:
+            up = info['upstream']
+            if info['ahead'] or info['behind']:
+                up += f'  (↑{info["ahead"]} ↓{info["behind"]})'
+            rows.append(('upstream', f'Upstream: {up}'))
+        parts = []
+        if info['staged']:    parts.append(f'{info["staged"]} staged')
+        if info['modified']:  parts.append(f'{info["modified"]} modified')
+        if info['untracked']: parts.append(f'{info["untracked"]} untracked')
+        if info['unmerged']:  parts.append(f'{info["unmerged"]} unmerged')
+        rows.append(('status', 'Status: ' + (', '.join(parts) if parts else 'clean')))
+        if info['origin_url']:
+            rows.append(('origin', f'Origin: {info["origin_url"]}'))
+        if info['last_commit']:
+            rows.append(('last', f'Last commit: {info["last_commit"]}'))
+
+        items = []
+        for key, label in rows:
+            it = Nautilus.MenuItem(name=f'GitEmblems::menu::{key}', label=label)
+            # Display-only: not actionable, but kept enabled so the text
+            # renders at full contrast rather than dimmed-out gray.
+            items.append(it)
+        return items
+
+    # ---- Properties dialog page builder ------------------------------------
 
     def _build_property_page(self, info):
         # Status line — same priority as the emblem.

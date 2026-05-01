@@ -161,9 +161,11 @@ green dot really does mean "only thing pending is a push"). The dot
 updates live as you commit, stage, or fetch — each repo's `.git/` is
 watched via `Gio.FileMonitor`, no polling.
 
-Right-click any repo folder → **Properties** → **Git** tab for
-branch, upstream tracking, ahead/behind counts, origin URL, and last
-commit.
+Right-click any repo folder for a **Git** submenu showing the
+headline status (e.g. `Git — dirty — 3 changes (main)`) and a full
+breakdown of branch, upstream, ahead/behind, origin URL, and last
+commit. The same details also live under **Properties → Git** if you
+prefer that surface.
 
 Fully independent of `folder-icon.sh`: the dot sits on top of
 whatever icon the folder already has, including the custom-icon PNGs
