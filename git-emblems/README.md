@@ -1,9 +1,18 @@
 # git-emblems
 
-A small Nautilus extension that overlays **live git status emblems** on
-folders that are git repositories. Independent of `folder-icon.sh` —
-emblems sit on top of whatever icon a folder already has, including the
-custom-icon PNGs produced by that script.
+A small Nautilus extension that surfaces git status in three places,
+all driven by the same data:
+
+- **Emblems** — a single colored dot composited onto the folder
+  icon for every git repo, updated live.
+- **Right-click menu** — a `Git — <state>` submenu with the
+  one-line headline plus the full breakdown.
+- **Properties → Git tab** — the same breakdown rendered as a
+  Properties dialog page with selectable text.
+
+Independent of `folder-icon.sh` — overlays sit on top of whatever
+icon a folder already has, including the custom-icon PNGs produced
+by that script.
 
 ## What it shows
 
@@ -85,9 +94,13 @@ extension:
    `.git/refs/remotes`. Any change drops the cache entry and calls
    `invalidate_extension_info()` so Nautilus re-renders.
 
-The Properties → Git tab is implemented as a separate
-`Nautilus.PropertyPageProvider` on the same class; it runs its own
-`git status` / `git log` / `git remote` calls when the dialog opens.
+The right-click menu and the Properties → Git tab are separate
+interfaces on the same class — `Nautilus.MenuProvider` and
+`Nautilus.PropertyPageProvider` respectively. Both run their own
+`git status` / `git log` / `git remote` calls fresh at the moment
+of interaction (right-click or dialog open), independent of the
+emblem cache. Cheap at human-scale interaction rates and avoids any
+staleness concerns.
 
 ## Notes / limits
 
@@ -101,6 +114,15 @@ The Properties → Git tab is implemented as a separate
   file-picker dialogs from other apps.
 - Verified on Oracle Linux 9 with Nautilus 40 (`libnautilus-extension`
   API 3.0) and `nautilus-python` 1.2.3.
+- **After install/upgrade, Nautilus must reload extensions.** The
+  installer runs `nautilus -q`, which is enough on most setups. With
+  `--gapplication-service` (the modern default) an active window can
+  keep the process alive — if the new surface doesn't appear, force
+  a fresh process:
+
+  ```bash
+  pkill -u $USER nautilus && sleep 1 && nautilus &
+  ```
 
 ## Uninstall
 

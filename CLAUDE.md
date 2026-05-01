@@ -182,3 +182,11 @@ parent folder in Nautilus to see the dots; right-click a repo folder
   `git status` per click is cheap. Items are kept `sensitive=True`
   even though they're display-only — disabling them dims the text
   to the point that the headline becomes hard to read.
+- **Nautilus must fully reload to pick up extension changes.** The
+  installer runs `nautilus -q`, but with `--gapplication-service`
+  (modern default) an active window can keep the process alive and
+  the old extension stays loaded. Symptom: install reports success
+  but the new surface doesn't appear. Recovery is
+  `pkill -u $USER nautilus && sleep 1 && nautilus &`. Don't put
+  `pkill` in `install.sh` — it's user-scoped on this box but a
+  surprising default for a setup script.
