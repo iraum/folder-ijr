@@ -14,6 +14,12 @@ modified.
 - `.gitignore` — ignores `*.png` so personal logos and diagnostic
   screenshots don't get committed. The script auto-detects the system's
   Adwaita folder as its base, so no base PNG needs to be tracked.
+- `git-emblems/` — independent Nautilus Python extension that overlays
+  live git-status emblems (dirty / ahead / behind / github-remote) on
+  folder icons. Sits on top of `folder-icon.sh` output without modifying
+  it. Has its own README and installer; see `git-emblems/README.md`.
+  Requires the `nautilus-python` package from EPEL — same repo as
+  ImageMagick.
 
 ## Usage
 

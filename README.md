@@ -143,6 +143,19 @@ icons differently from themed ones, and a larger native canvas helps.
 PNG needs transparency. Re-export it from your design tool with a
 transparent background, or save as SVG.
 
+## Companion: live git status emblems
+
+A separate, optional Nautilus extension lives in
+[`git-emblems/`](./git-emblems/). It overlays small emblems on folders
+that are git repositories — dirty / ahead / behind / "has a github
+remote" — and updates them live as you commit, stage, or fetch. It's
+fully independent of `folder-icon.sh`: the emblems sit on top of
+whatever icon the folder already has, including the custom-icon PNGs
+this script produces.
+
+See [`git-emblems/README.md`](./git-emblems/README.md) for install and
+details.
+
 ## License
 
 MIT — do what you like, no warranty. See `LICENSE` if present, otherwise
