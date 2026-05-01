@@ -15,11 +15,12 @@ modified.
   screenshots don't get committed. The script auto-detects the system's
   Adwaita folder as its base, so no base PNG needs to be tracked.
 - `git-emblems/` — independent Nautilus Python extension that overlays
-  live git-status emblems (dirty / ahead / behind / github-remote) on
-  folder icons. Sits on top of `folder-icon.sh` output without modifying
-  it. Has its own README and installer; see `git-emblems/README.md`.
-  Requires the `nautilus-python` package from EPEL — same repo as
-  ImageMagick.
+  a single live git-status dot on every git-repo folder. Color encodes
+  state with a fixed priority: dirty (orange) > behind (red) > ahead
+  (green) > clean (gray). Exactly one emblem per repo; no stacking.
+  Sits on top of `folder-icon.sh` output without modifying it. Has its
+  own README and installer; see `git-emblems/README.md`. Requires the
+  `nautilus-python` package from EPEL — same repo as ImageMagick.
 
 ## Usage
 

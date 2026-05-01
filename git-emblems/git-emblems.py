@@ -1,11 +1,13 @@
 """
 Nautilus extension: live git status emblems on folder icons.
 
-Runs git status on git repos visible in Nautilus and overlays emblems for:
-  - dirty working tree         -> emblem "git-dirty"
-  - local commits not pushed   -> emblem "git-ahead"
-  - upstream commits not pulled-> emblem "git-behind"
-  - origin remote is github    -> emblem "github-remote"
+Every folder that is a git repo root gets exactly one small emblem.
+The emblem's color encodes the repo's state, with this priority:
+
+  dirty  (uncommitted changes)         -> "git-dirty"   (orange)
+  behind (upstream has unpulled work)  -> "git-behind"  (red)
+  ahead  (local commits not pushed)    -> "git-ahead"   (green)
+  clean  (in sync, nothing to do)      -> "git-clean"   (gray)
 
 Cooperates with folder-icon.sh — emblems are composited by Nautilus on top of
 whatever the folder's icon resolves to, including custom-icon PNGs.
@@ -151,7 +153,6 @@ class GitEmblemsProvider(GObject.GObject, Nautilus.InfoProvider):
     # ---- git ----------------------------------------------------------------
 
     def _compute_emblems(self, path):
-        emblems = []
         try:
             out = subprocess.check_output(
                 [GIT_BIN, '-C', path, 'status', '--porcelain=v2', '--branch'],
@@ -159,7 +160,7 @@ class GitEmblemsProvider(GObject.GObject, Nautilus.InfoProvider):
             ).decode('utf-8', 'replace')
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
                 FileNotFoundError):
-            return emblems
+            return []
 
         ahead = behind = 0
         dirty = False
@@ -175,22 +176,11 @@ class GitEmblemsProvider(GObject.GObject, Nautilus.InfoProvider):
             elif line and not line.startswith('#'):
                 dirty = True
 
+        # Single emblem, prioritized: dirty beats behind beats ahead beats clean.
         if dirty:
-            emblems.append('git-dirty')
-        if ahead:
-            emblems.append('git-ahead')
+            return ['git-dirty']
         if behind:
-            emblems.append('git-behind')
-
-        try:
-            url = subprocess.check_output(
-                [GIT_BIN, '-C', path, 'remote', 'get-url', 'origin'],
-                stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SEC,
-            ).decode('utf-8', 'replace').strip()
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
-                FileNotFoundError):
-            url = ''
-        if 'github.com' in url:
-            emblems.append('github-remote')
-
-        return emblems
+            return ['git-behind']
+        if ahead:
+            return ['git-ahead']
+        return ['git-clean']

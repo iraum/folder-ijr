@@ -20,8 +20,10 @@ mkdir -p "$EXT_DIR"
 cp -f "$SCRIPT_DIR/git-emblems.py" "$EXT_DIR/git-emblems.py"
 echo "installed extension -> $EXT_DIR/git-emblems.py"
 
-# 3. Install emblem icons.
+# 3. Install emblem icons. Remove a known-stale emblem from earlier
+#    versions of this tool so the user's icon dir matches current state.
 mkdir -p "$EMBLEM_DIR"
+rm -f "$EMBLEM_DIR/emblem-github-remote.svg"
 cp -f "$SCRIPT_DIR/icons/"emblem-*.svg "$EMBLEM_DIR/"
 echo "installed emblems  -> $EMBLEM_DIR/"
 

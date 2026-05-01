@@ -7,12 +7,16 @@ custom-icon PNGs produced by that script.
 
 ## What it shows
 
-| Emblem            | Meaning                                              |
-|-------------------|------------------------------------------------------|
-| `git-dirty`       | Working tree has uncommitted / unstaged changes.     |
-| `git-ahead`       | Local branch has commits not in upstream.            |
-| `git-behind`      | Upstream has commits not in local branch.            |
-| `github-remote`   | `origin` URL contains `github.com`.                  |
+Every git repo root gets exactly **one** small dot, color-coded by
+status. When several states are true at once, the most actionable one
+wins (dirty beats behind beats ahead).
+
+| Emblem        | Color   | Meaning                                          |
+|---------------|---------|--------------------------------------------------|
+| `git-dirty`   | orange  | Working tree has uncommitted / unstaged changes. |
+| `git-behind`  | red     | Upstream has commits not in local branch.        |
+| `git-ahead`   | green   | Local branch has commits not in upstream.        |
+| `git-clean`   | gray    | Repo is in sync with upstream, working tree clean. |
 
 Emblems update live: each repo's `.git/` directory is watched via
 `Gio.FileMonitor`, so commits, stages, fetches, and branch switches
@@ -72,8 +76,7 @@ short-running `git` process per visible repo per change.
 
 ```bash
 rm ~/.local/share/nautilus-python/extensions/git-emblems.py
-rm ~/.local/share/icons/hicolor/scalable/emblems/emblem-git-{dirty,ahead,behind}.svg
-rm ~/.local/share/icons/hicolor/scalable/emblems/emblem-github-remote.svg
+rm ~/.local/share/icons/hicolor/scalable/emblems/emblem-git-{clean,dirty,ahead,behind}.svg
 gtk-update-icon-cache -f ~/.local/share/icons/hicolor
 nautilus -q
 ```
