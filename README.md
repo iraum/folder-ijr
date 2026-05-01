@@ -147,14 +147,37 @@ transparent background, or save as SVG.
 
 A separate, optional Nautilus extension lives in
 [`git-emblems/`](./git-emblems/). It overlays a single small status
-dot on every folder that is a git repository — orange when dirty, red
-when behind upstream, green when ahead, gray when clean — and updates
-it live as you commit, stage, or fetch. It's fully independent of
-`folder-icon.sh`: the dot sits on top of whatever icon the folder
-already has, including the custom-icon PNGs this script produces.
+dot on every folder that is a git repository, color-coded by state:
 
-See [`git-emblems/README.md`](./git-emblems/README.md) for install and
-details.
+| Color  | State                                                   |
+|--------|---------------------------------------------------------|
+| Orange | Dirty — staged / modified / untracked / unmerged files. |
+| Red    | Behind — upstream has commits not in local branch.       |
+| Green  | Ahead — local commits not yet pushed.                    |
+| Gray   | Clean — in sync, nothing to do.                          |
+
+Priority when several apply: dirty > behind > ahead > clean (so a
+green dot really does mean "only thing pending is a push"). The dot
+updates live as you commit, stage, or fetch — each repo's `.git/` is
+watched via `Gio.FileMonitor`, no polling.
+
+Right-click any repo folder → **Properties** → **Git** tab for
+branch, upstream tracking, ahead/behind counts, origin URL, and last
+commit.
+
+Fully independent of `folder-icon.sh`: the dot sits on top of
+whatever icon the folder already has, including the custom-icon PNGs
+this script produces.
+
+Install:
+
+```bash
+sudo dnf install -y nautilus-python   # one-time; needs ol9_developer_EPEL
+cd git-emblems && ./install.sh
+```
+
+See [`git-emblems/README.md`](./git-emblems/README.md) for the full
+write-up.
 
 ## License
 

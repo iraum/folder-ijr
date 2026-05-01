@@ -106,3 +106,73 @@ folders that share a basename.
 - When changing the trim/offset tuning, re-run the script on every
   already-customized folder — the output filename is keyed only by the
   folder's path, so re-running just overwrites the cached PNG in place.
+
+## git-emblems usage
+
+```bash
+# 1. Install the Nautilus Python binding (one-time, system-wide)
+sudo dnf install -y nautilus-python   # ol9_developer_EPEL
+
+# 2. Install / refresh the extension and emblem icons
+cd git-emblems && ./install.sh
+```
+
+The installer drops `git-emblems.py` into
+`~/.local/share/nautilus-python/extensions/`, copies the four
+`emblem-git-*.svg` files into
+`~/.local/share/icons/hicolor/scalable/emblems/`, refreshes the GTK
+icon cache, and bounces Nautilus if it's already running. Open any
+parent folder in Nautilus to see the dots; right-click a repo folder
+→ Properties → Git for the rich view.
+
+## git-emblems dependencies
+
+- `nautilus-python` — Nautilus extension binding for Python via
+  gobject-introspection. Lives in `ol9_developer_EPEL` (same repo as
+  ImageMagick), not enabled by default — see the folder-icon.sh
+  install steps for the two `dnf` commands that enable it.
+- GTK 3 (for the Properties → Git tab) and Nautilus 3.0 extension
+  API. Nautilus 40 on OL9 ships `libnautilus-extension` 3.0; this
+  is what `gi.require_version('Nautilus', '3.0')` matches. On
+  Nautilus 43+ the API version is 4.0 — the extension would need an
+  updated `require_version` and likely GTK 4 widgets there.
+
+## git-emblems design choices worth preserving
+
+- **`update_file_info()` is synchronous.** An earlier version pushed
+  `git status` into a worker thread and relied on
+  `invalidate_extension_info()` to make Nautilus re-call
+  `update_file_info` once the cache was filled. In practice Nautilus
+  didn't re-query reliably after that signal, so most folders never
+  got their emblem applied (symptom: 2 of ~20 repos marked). Going
+  synchronous removes the race. The cost is one short `git status`
+  per visible repo on first render — tens of milliseconds each on a
+  healthy repo — and every render after that is a cache hit.
+- **Single emblem per repo, fixed priority.** dirty > behind > ahead
+  > clean. The user explicitly chose color-only over multi-emblem
+  stacks. Don't reintroduce stacking; it conflicts with that
+  decision. If a github-remote indicator (or similar) is wanted
+  back, make it a *separate* corner emblem so the four status
+  colors stay mutually exclusive.
+- **`.git` as a file is supported** (worktrees and submodules — a
+  text file with `gitdir: <path>`). The recognition check is
+  `os.path.exists(.git)`, not `isdir`. The `Gio.FileMonitor` follows
+  the `gitdir:` pointer when `.git` is a file so live updates still
+  work for worktrees.
+- **Emblem visual size is tuned by SVG content, not canvas.** All
+  four dots are radius 10 inside a 64×64 viewBox (~31% of canvas).
+  Nautilus scales the SVG to whatever pixel size the emblem cell
+  needs — shrink or grow the *content* within the 64-canvas, never
+  the canvas itself, so the rendered output stays sharp and the
+  four dots remain visually identical in size.
+- **Cache + monitor pair is per-repo path.** `_cache`,
+  `_files`, and `_monitors` are dicts keyed by absolute folder path.
+  Don't replace path keys with FileInfo refs — Nautilus FileInfo
+  objects can be transient, but the path is stable, and we want
+  monitor callbacks to find the latest live FileInfo for that path
+  via `_files[path]`.
+- **Properties → Git tab does its own git calls,** not the cached
+  emblem result. The dialog is opened on-demand, so a fresh
+  `git status` / `git log` / `git remote` is cheap and gives the
+  most accurate snapshot. Don't try to share state with the
+  emblem cache — different surfaces, different lifetimes.
