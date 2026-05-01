@@ -37,14 +37,17 @@ import gi
 gi.require_version('Nautilus', '3.0')
 gi.require_version('Gio', '2.0')
 gi.require_version('GLib', '2.0')
-from gi.repository import Nautilus, GObject, GLib, Gio  # noqa: E402
+gi.require_version('Gtk', '3.0')
+from gi.repository import Nautilus, GObject, GLib, Gio, Gtk  # noqa: E402
 
 
 GIT_BIN = 'git'
 GIT_TIMEOUT_SEC = 2
 
 
-class GitEmblemsProvider(GObject.GObject, Nautilus.InfoProvider):
+class GitEmblemsProvider(GObject.GObject,
+                         Nautilus.InfoProvider,
+                         Nautilus.PropertyPageProvider):
     def __init__(self):
         super().__init__()
         self._cache = {}      # path -> list[str] emblem names
@@ -168,3 +171,118 @@ class GitEmblemsProvider(GObject.GObject, Nautilus.InfoProvider):
         if ahead:
             return ['git-ahead']
         return ['git-clean']
+
+    # ---- Properties dialog: "Git" tab --------------------------------------
+
+    def get_property_pages(self, files):
+        if len(files) != 1:
+            return []
+        f = files[0]
+        if f.get_uri_scheme() != 'file' or not f.is_directory():
+            return []
+        path = unquote(urlparse(f.get_uri()).path)
+        if not os.path.exists(os.path.join(path, '.git')):
+            return []
+
+        info = self._gather_git_info(path)
+        page = self._build_property_page(info)
+        page.show_all()
+        label = Gtk.Label(label='Git')
+        label.show()
+        return [Nautilus.PropertyPage(
+            name='GitEmblems::git', label=label, page=page,
+        )]
+
+    def _gather_git_info(self, path):
+        info = {
+            'branch': None, 'upstream': None,
+            'ahead': 0, 'behind': 0,
+            'staged': 0, 'modified': 0, 'untracked': 0, 'unmerged': 0,
+            'origin_url': None, 'last_commit': None,
+        }
+        out = self._run_git(path, ['status', '--porcelain=v2', '--branch'])
+        for line in out.splitlines():
+            if line.startswith('# branch.head '):
+                info['branch'] = line[len('# branch.head '):].strip()
+            elif line.startswith('# branch.upstream '):
+                info['upstream'] = line[len('# branch.upstream '):].strip()
+            elif line.startswith('# branch.ab '):
+                parts = line.split()
+                try:
+                    info['ahead'] = int(parts[2].lstrip('+'))
+                    info['behind'] = int(parts[3].lstrip('-'))
+                except (IndexError, ValueError):
+                    pass
+            elif line.startswith('1 ') or line.startswith('2 '):
+                # "<XY> ..." — X is index status, Y is worktree status.
+                fields = line.split(None, 2)
+                if len(fields) >= 2 and len(fields[1]) >= 2:
+                    if fields[1][0] != '.':
+                        info['staged'] += 1
+                    if fields[1][1] != '.':
+                        info['modified'] += 1
+            elif line.startswith('? '):
+                info['untracked'] += 1
+            elif line.startswith('u '):
+                info['unmerged'] += 1
+
+        url = self._run_git(path, ['remote', 'get-url', 'origin']).strip()
+        info['origin_url'] = url or None
+        last = self._run_git(
+            path, ['log', '-1', '--pretty=format:%s  —  %cr'],
+        ).strip()
+        info['last_commit'] = last or None
+        return info
+
+    def _run_git(self, path, args):
+        try:
+            return subprocess.check_output(
+                [GIT_BIN, '-C', path] + args,
+                stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SEC,
+            ).decode('utf-8', 'replace')
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+                FileNotFoundError):
+            return ''
+
+    def _build_property_page(self, info):
+        # Status line — same priority as the emblem.
+        if info['staged'] or info['modified'] or info['untracked'] or info['unmerged']:
+            status = 'Dirty'
+            parts = []
+            if info['staged']:    parts.append(f"{info['staged']} staged")
+            if info['modified']:  parts.append(f"{info['modified']} modified")
+            if info['untracked']: parts.append(f"{info['untracked']} untracked")
+            if info['unmerged']:  parts.append(f"{info['unmerged']} unmerged")
+            status += '  —  ' + ', '.join(parts)
+        elif info['behind']:
+            status = f"Behind upstream by {info['behind']}"
+        elif info['ahead']:
+            status = f"Ahead of upstream by {info['ahead']}"
+        else:
+            status = 'Clean'
+
+        rows = [('Status', status), ('Branch', info['branch'] or '(unknown)')]
+        if info['upstream']:
+            up = info['upstream']
+            if info['ahead'] or info['behind']:
+                up += f"  (ahead {info['ahead']}, behind {info['behind']})"
+            rows.append(('Upstream', up))
+        if info['origin_url']:
+            rows.append(('Origin', info['origin_url']))
+        if info['last_commit']:
+            rows.append(('Last commit', info['last_commit']))
+
+        grid = Gtk.Grid(
+            column_spacing=18, row_spacing=8,
+            margin_start=18, margin_end=18,
+            margin_top=18, margin_bottom=18,
+        )
+        for r, (key, val) in enumerate(rows):
+            k = Gtk.Label(label=key, xalign=0.0)
+            k.get_style_context().add_class('dim-label')
+            v = Gtk.Label(label=val, xalign=0.0, selectable=True)
+            v.set_line_wrap(True)
+            v.set_line_wrap_mode(2)  # PANGO_WRAP_WORD_CHAR
+            grid.attach(k, 0, r, 1, 1)
+            grid.attach(v, 1, r, 1, 1)
+        return grid

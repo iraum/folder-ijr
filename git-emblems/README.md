@@ -23,6 +23,19 @@ Emblems update live: each repo's `.git/` directory is watched via
 trigger a re-render within a fraction of a second. No polling, no
 systemd timer.
 
+## Properties → Git tab
+
+Right-click any repo folder → **Properties** → **Git** tab. Shows:
+
+- **Status** — clean / dirty (with staged / modified / untracked /
+  unmerged counts) / ahead / behind.
+- **Branch** — current branch name (or `(detached)`).
+- **Upstream** — tracked remote branch with ahead/behind counts.
+- **Origin** — `origin` remote URL.
+- **Last commit** — subject line and relative time.
+
+The text is selectable, so you can copy any of it.
+
 ## Install
 
 ```bash
