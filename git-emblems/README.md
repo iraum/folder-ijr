@@ -51,31 +51,33 @@ The installer copies:
 - `git-emblems.py` → `~/.local/share/nautilus-python/extensions/`
 - `icons/emblem-*.svg` → `~/.local/share/icons/hicolor/scalable/emblems/`
 
-…then refreshes the GTK icon cache and restarts Nautilus.
+…then refreshes the GTK icon cache and restarts Nautilus if it's
+already running.
 
 ## How it works
 
 Nautilus calls `update_file_info()` on every visible folder. The
 extension:
 
-1. Returns immediately from `update_file_info()` — it only reads a
-   cache.
-2. On a cache miss, queues the path to a single worker thread that runs
-   `git status --porcelain=v2 --branch` (2-second timeout) and `git
-   remote get-url origin`.
-3. Stores the resulting emblem list and asks Nautilus to refresh that
-   one file via `invalidate_extension_info()` from the GLib main loop.
-4. Sets up a `Gio.FileMonitor` on `.git/`, `.git/refs/heads`, and
-   `.git/refs/remotes` so the next change drops the cache and
-   recomputes.
+1. Skips anything that isn't a local directory containing a `.git`
+   (directory or file — worktrees and submodules count).
+2. On a cache miss, runs `git status --porcelain=v2 --branch`
+   synchronously (2-second timeout) and stores the resulting emblem.
+   `git status` on a healthy repo is fast — tens of milliseconds —
+   so the first render of a parent dir with N repos costs ~N quick
+   git invocations. Subsequent renders are cache hits.
+3. Sets up a `Gio.FileMonitor` on `.git/`, `.git/refs/heads`, and
+   `.git/refs/remotes`. Any change drops the cache entry and calls
+   `invalidate_extension_info()` so Nautilus re-renders.
 
-This keeps the UI thread fast and bounds the worst case at one
-short-running `git` process per visible repo per change.
+The Properties → Git tab is implemented as a separate
+`Nautilus.PropertyPageProvider` on the same class; it runs its own
+`git status` / `git log` / `git remote` calls when the dialog opens.
 
 ## Notes / limits
 
-- Only marks the **repo root** (the folder that contains `.git/`).
-  Nested folders inside a repo are left alone.
+- Only marks the **repo root** (the folder containing a `.git`
+  directory or file). Nested folders inside a repo are left alone.
 - "Behind" only updates when something local actually fetches —
   Nautilus is not going to run `git fetch` for you. Pair with a
   separate periodic fetcher (e.g., a systemd user timer) if you want

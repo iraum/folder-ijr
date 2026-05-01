@@ -18,8 +18,10 @@ modified.
   a single live git-status dot on every git-repo folder. Color encodes
   state with a fixed priority: dirty (orange) > behind (red) > ahead
   (green) > clean (gray). Exactly one emblem per repo; no stacking.
-  Sits on top of `folder-icon.sh` output without modifying it. Has its
-  own README and installer; see `git-emblems/README.md`. Requires the
+  Also adds a "Git" tab to the right-click Properties dialog showing
+  branch / upstream / ahead-behind / origin / last commit. Sits on top
+  of `folder-icon.sh` output without modifying it. Has its own README
+  and installer; see `git-emblems/README.md`. Requires the
   `nautilus-python` package from EPEL — same repo as ImageMagick.
 
 ## Usage
