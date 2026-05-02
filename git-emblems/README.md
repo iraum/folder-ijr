@@ -25,7 +25,7 @@ wins (dirty beats behind beats ahead).
 | `git-dirty`   | orange  | Working tree has uncommitted / unstaged changes. |
 | `git-behind`  | red     | Upstream has commits not in local branch.        |
 | `git-ahead`   | green   | Local branch has commits not in upstream.        |
-| `git-clean`   | gray    | Repo is in sync with upstream, working tree clean. |
+| `git-clean`   | white   | Repo is in sync with upstream, working tree clean. |
 
 Emblems update live: each repo's `.git/` directory is watched via
 `Gio.FileMonitor`, so commits, stages, fetches, and branch switches

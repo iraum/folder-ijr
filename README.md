@@ -165,12 +165,13 @@ color-coded by state:
 | Orange | Dirty — staged / modified / untracked / unmerged files. |
 | Red    | Behind — upstream has commits not in local branch.       |
 | Green  | Ahead — local commits not yet pushed.                    |
-| Gray   | Clean — in sync, nothing to do.                          |
+| White  | Clean — in sync, nothing to do.                          |
 
 Priority when several apply: dirty > behind > ahead > clean (so a
-green dot really does mean "only thing pending is a push"). The dot
-updates live as you commit, stage, or fetch — each repo's `.git/` is
-watched via `Gio.FileMonitor`, no polling.
+green dot really does mean "only thing pending is a push", and a
+white dot means everything is in sync). The dot updates live as you
+commit, stage, or fetch — each repo's `.git/` is watched via
+`Gio.FileMonitor`, no polling.
 
 Right-click any repo folder for a **Git** submenu showing the
 headline status (e.g. `Git — dirty — 3 changes (main)`) and a full

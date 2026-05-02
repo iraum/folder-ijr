@@ -17,7 +17,7 @@ modified.
 - `git-emblems/` — independent Nautilus Python extension that overlays
   a single live git-status dot on every git-repo folder. Color encodes
   state with a fixed priority: dirty (orange) > behind (red) > ahead
-  (green) > clean (gray). Exactly one emblem per repo; no stacking.
+  (green) > clean (white). Exactly one emblem per repo; no stacking.
   Adds a "Git" submenu to the right-click context menu (headline +
   full breakdown) and a matching "Git" tab to the Properties dialog.
   Sits on top of `folder-icon.sh` output without modifying it. Has its
