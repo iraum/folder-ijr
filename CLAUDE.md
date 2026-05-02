@@ -11,8 +11,8 @@ modified.
   composited PNG, and attaches it to the folder via
   `gio set … metadata::custom-icon`.
 - `README.md` — user-facing install and usage guide.
-- `.gitignore` — ignores `*.png` so personal logos and diagnostic
-  screenshots don't get committed. The script auto-detects the system's
+- `.gitignore` — ignores `*.png` and `*.svg` so personal logos and
+  diagnostic screenshots don't get committed. The script auto-detects the system's
   Adwaita folder as its base, so no base PNG needs to be tracked.
 - `git-emblems/` — independent Nautilus Python extension that overlays
   a single live git-status dot on every git-repo folder. Color encodes
