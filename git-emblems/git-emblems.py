@@ -7,7 +7,7 @@ The emblem's color encodes the repo's state, with this priority:
   dirty  (uncommitted changes)         -> "git-dirty"   (orange)
   behind (upstream has unpulled work)  -> "git-behind"  (red)
   ahead  (local commits not pushed)    -> "git-ahead"   (green)
-  clean  (in sync, nothing to do)      -> "git-clean"   (gray)
+  clean  (in sync, nothing to do)      -> "git-clean"   (white)
 
 Cooperates with folder-icon.sh — emblems are composited by Nautilus on top of
 whatever the folder's icon resolves to, including custom-icon PNGs.
