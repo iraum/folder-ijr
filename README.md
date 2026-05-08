@@ -1,4 +1,4 @@
-# folder-ijr
+# nautilus-folder-icons
 
 Two small GNOME / Nautilus tools that make file-manager folders more
 informative:
@@ -55,8 +55,8 @@ Two command-line tools:
 ## Install
 
 ```bash
-git clone https://github.com/iraum/folder-ijr.git
-cd folder-ijr
+git clone https://github.com/iraum/nautilus-folder-icons.git
+cd nautilus-folder-icons
 chmod +x folder-icon.sh
 ```
 

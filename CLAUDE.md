@@ -1,4 +1,4 @@
-# folder-ijr
+# nautilus-folder-icons
 
 Small utility for giving individual GNOME/Nautilus folders a custom icon: the
 default folder shape with a logo composited onto its face. Only the folders the
