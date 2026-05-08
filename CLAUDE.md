@@ -1,9 +1,9 @@
 # nautilus-folder-icons
 
-Small utility for giving individual GNOME/Nautilus folders a custom icon: the
-default folder shape with a logo composited onto its face. Only the folders the
-user explicitly runs the script on are changed — the system icon theme is not
-modified.
+Two small GNOME/Nautilus tools that make file-manager folders more informative
+without touching the system icon theme: `folder-icon.sh` composites a logo onto
+a folder's face for individually-chosen folders, and `git-emblems/` overlays a
+live git-status dot on every git repository.
 
 ## Layout
 
