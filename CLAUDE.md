@@ -1,35 +1,25 @@
 # nautilus-folder-icons
 
-Two small GNOME/Nautilus tools that make file-manager folders more informative
-without touching the system icon theme: `folder-icon.sh` composites a logo onto
-a folder's face for individually-chosen folders, and `git-emblems/` overlays a
-live git-status dot on every git repository.
+Small GNOME / Nautilus tool that composites a logo onto a folder's
+face for individually-chosen folders, without touching the system
+icon theme. Per-folder, on demand, fully reversible.
+
+The companion project
+[`nautilus-git-status`](https://github.com/iraum/nautilus-git-status)
+overlays a live git emblem on every git-repo folder; its emblem
+composites on top of whatever icon a folder has, so the two can be
+used together without coordination.
 
 ## Layout
 
-- `folder-icon.sh` — the script. Takes a target folder and a logo, produces a
-  composited PNG, and attaches it to the folder via
+- `folder-icon.sh` — the script. Takes a target folder and a logo,
+  produces a composited PNG, and attaches it to the folder via
   `gio set … metadata::custom-icon`.
 - `README.md` — user-facing install and usage guide.
 - `.gitignore` — ignores `*.png` and `*.svg` so personal logos and
-  diagnostic screenshots don't get committed. The script auto-detects the system's
-  Adwaita folder as its base, so no base PNG needs to be tracked.
-- `git-emblems/` — independent Nautilus Python extension that overlays
-  a single live git emblem on every git-repo folder. The emblem is one
-  layered artwork: an outer disk encodes status with fixed priority
-  (dirty (orange) > behind (red) > ahead (green) > clean (white)) and
-  a small black-outlined inner dot encodes ownership tier (primary /
-  secondary / tertiary). The 'external' tier renders as the plain
-  status disk with no inner dot. The inner dot's outline switches to a
-  bolder crimson stroke for tiered repos with no remote configured, so
-  purely-local repos read at a glance. Tier comes from the user's
-  profile config at `~/.config/nautilus-folder-icons/git-emblems.conf`.
-  Exactly one emblem per repo; no stacking. Adds a "Git" submenu to
-  the right-click context menu (headline + full breakdown, including
-  identity) and a matching "Git" tab to the Properties dialog. Sits on
-  top of `folder-icon.sh` output without modifying it. Has its own
-  README and installer; see `git-emblems/README.md`. Requires the
-  `nautilus-python` package from EPEL — same repo as ImageMagick.
+  diagnostic screenshots don't get committed. The script auto-detects
+  the system's Adwaita folder as its base, so no base PNG needs to be
+  tracked.
 
 ## Usage
 
@@ -113,124 +103,3 @@ folders that share a basename.
 - When changing the trim/offset tuning, re-run the script on every
   already-customized folder — the output filename is keyed only by the
   folder's path, so re-running just overwrites the cached PNG in place.
-
-## git-emblems usage
-
-```bash
-# 1. Install the Nautilus Python binding (one-time, system-wide)
-sudo dnf install -y nautilus-python   # ol9_developer_EPEL
-
-# 2. Install / refresh the extension and emblem icons
-cd git-emblems && ./install.sh
-```
-
-The installer drops `git-emblems.py` into
-`~/.local/share/nautilus-python/extensions/`, copies the four
-`emblem-git-*.svg` files into
-`~/.local/share/icons/hicolor/scalable/emblems/`, refreshes the GTK
-icon cache, and bounces Nautilus if it's already running. Open any
-parent folder in Nautilus to see the dots; right-click a repo folder
-→ Properties → Git for the rich view.
-
-## git-emblems dependencies
-
-- `nautilus-python` — Nautilus extension binding for Python via
-  gobject-introspection. Lives in `ol9_developer_EPEL` (same repo as
-  ImageMagick), not enabled by default — see the folder-icon.sh
-  install steps for the two `dnf` commands that enable it.
-- GTK 3 (for the Properties → Git tab) and Nautilus 3.0 extension
-  API. Nautilus 40 on OL9 ships `libnautilus-extension` 3.0; this
-  is what `gi.require_version('Nautilus', '3.0')` matches. On
-  Nautilus 43+ the API version is 4.0 — the extension would need an
-  updated `require_version` and likely GTK 4 widgets there.
-
-## git-emblems design choices worth preserving
-
-- **`update_file_info()` is synchronous.** An earlier version pushed
-  `git status` into a worker thread and relied on
-  `invalidate_extension_info()` to make Nautilus re-call
-  `update_file_info` once the cache was filled. In practice Nautilus
-  didn't re-query reliably after that signal, so most folders never
-  got their emblem applied (symptom: 2 of ~20 repos marked). Going
-  synchronous removes the race. The cost is one short `git status`
-  per visible repo on first render — tens of milliseconds each on a
-  healthy repo — and every render after that is a cache hit.
-- **Single emblem per repo, fixed priority.** dirty > behind > ahead
-  > clean. The user explicitly chose color-only over multi-emblem
-  stacks. Don't reintroduce stacking; it conflicts with that
-  decision. The ownership tier was added by *layering* (a small black-
-  outlined dot at the center of the status disk in the same SVG), not
-  by adding a second emblem — this preserves the single-emblem rule.
-  If another signal is wanted later, prefer extending the same emblem
-  layer-wise over emitting a second emblem.
-- **Ownership tiers: 4 (primary/secondary/tertiary/external) encoded
-  as a small inner dot inside the status disk.** The status disk stays
-  the dominant visual (its color reads as a ring around the inner
-  dot); the inner dot identifies which profile owns the repo. The
-  'external' tier renders without an inner dot — a plain status disk
-  signals "no ownership to declare", matching the pre-ownership look.
-  The mapping from identifier to tier lives in
-  `~/.config/nautilus-folder-icons/git-emblems.conf`, keyed by either
-  GitHub owner slug, `user.name`, or `user.email` (lookup is
-  case-insensitive). Detection priority is **origin URL owner >
-  user.name > user.email**: a clone of someone else's repo is
-  "external" regardless of which local profile committed to it.
-  Origin is the source of truth for ownership; user.name/email only
-  matter for purely-local repos that have no origin. The config is
-  watched via `Gio.FileMonitor` (`monitor_file`, which fires whether
-  or not the file exists) so edits repaint emblems within a fraction
-  of a second.
-- **No-remote signal: bolder crimson outline on the inner tier dot.**
-  Computed from `git remote` (any remote, not just origin), so a repo
-  with only an `upstream` remote still counts as "has a remote". When
-  a tiered repo has no remotes at all, the inner dot's outline is
-  swapped from soft near-black (`#1a1a1a`) to a bolder crimson
-  (`#e11d48`) at 2.0px stroke. External repos don't participate —
-  there's no inner dot to outline. This adds 12 SVG variants
-  (4 statuses × 3 tiers, with `-noremote` filename suffix), bringing
-  the total to 28 emblems. The signal also surfaces in the menu /
-  Properties Identity row as `iraum (primary, no remote)`.
-- **`icons/generate.py` is the source of truth for emblem artwork.**
-  Edit colors / ring widths / dot radii there, run
-  `python3 icons/generate.py` from the `icons/` directory, and the
-  16 SVGs (4 statuses × 4 tiers) regenerate. The generated SVGs are
-  committed alongside the generator so the install path doesn't
-  require running Python at install time and so the artwork is
-  inspectable on the forge UI. Do not hand-edit the SVGs — re-run
-  the generator instead.
-- **`.git` as a file is supported** (worktrees and submodules — a
-  text file with `gitdir: <path>`). The recognition check is
-  `os.path.exists(.git)`, not `isdir`. The `Gio.FileMonitor` follows
-  the `gitdir:` pointer when `.git` is a file so live updates still
-  work for worktrees.
-- **Emblem visual size is tuned by SVG content, not canvas.** All
-  four dots are radius 10 inside a 64×64 viewBox (~31% of canvas).
-  Nautilus scales the SVG to whatever pixel size the emblem cell
-  needs — shrink or grow the *content* within the 64-canvas, never
-  the canvas itself, so the rendered output stays sharp and the
-  four dots remain visually identical in size.
-- **Cache + monitor pair is per-repo path.** `_cache`,
-  `_files`, and `_monitors` are dicts keyed by absolute folder path.
-  Don't replace path keys with FileInfo refs — Nautilus FileInfo
-  objects can be transient, but the path is stable, and we want
-  monitor callbacks to find the latest live FileInfo for that path
-  via `_files[path]`.
-- **Properties → Git tab does its own git calls,** not the cached
-  emblem result. The dialog is opened on-demand, so a fresh
-  `git status` / `git log` / `git remote` is cheap and gives the
-  most accurate snapshot. Don't try to share state with the
-  emblem cache — different surfaces, different lifetimes.
-- **Right-click menu also queries fresh.** `MenuProvider.get_file_items`
-  runs the same `_gather_git_info` as the Properties tab. Menu
-  generation happens at right-click rate (human-scale), so a single
-  `git status` per click is cheap. Items are kept `sensitive=True`
-  even though they're display-only — disabling them dims the text
-  to the point that the headline becomes hard to read.
-- **Nautilus must fully reload to pick up extension changes.** The
-  installer runs `nautilus -q`, but with `--gapplication-service`
-  (modern default) an active window can keep the process alive and
-  the old extension stays loaded. Symptom: install reports success
-  but the new surface doesn't appear. Recovery is
-  `pkill -u $USER nautilus && sleep 1 && nautilus &`. Don't put
-  `pkill` in `install.sh` — it's user-scoped on this box but a
-  surprising default for a setup script.
