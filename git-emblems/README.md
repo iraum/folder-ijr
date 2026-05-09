@@ -3,8 +3,9 @@
 A small Nautilus extension that surfaces git status in three places,
 all driven by the same data:
 
-- **Emblems** — a single colored dot composited onto the folder
-  icon for every git repo, updated live.
+- **Emblems** — a single combined indicator composited onto the
+  folder icon for every git repo, updated live. Encodes both **status**
+  (inner dot color) and **ownership tier** (outer ring color).
 - **Right-click menu** — a `Git — <state>` submenu with the
   one-line headline plus the full breakdown.
 - **Properties → Git tab** — the same breakdown rendered as a
@@ -16,21 +17,57 @@ by that script.
 
 ## What it shows
 
-Every git repo root gets exactly **one** small dot, color-coded by
-status. When several states are true at once, the most actionable one
-wins (dirty beats behind beats ahead).
+Every git repo root gets exactly **one** emblem with two layers:
 
-| Emblem        | Color   | Meaning                                          |
-|---------------|---------|--------------------------------------------------|
-| `git-dirty`   | orange  | Working tree has uncommitted / unstaged changes. |
-| `git-behind`  | red     | Upstream has commits not in local branch.        |
-| `git-ahead`   | green   | Local branch has commits not in upstream.        |
-| `git-clean`   | white   | Repo is in sync with upstream, working tree clean. |
+**Inner dot — status.** When several states are true at once, the most
+actionable one wins (dirty beats behind beats ahead).
+
+| Color   | Meaning                                            |
+|---------|----------------------------------------------------|
+| orange  | Working tree has uncommitted / unstaged changes.   |
+| red     | Upstream has commits not in local branch.          |
+| green   | Local branch has commits not in upstream.          |
+| white   | Repo is in sync with upstream, working tree clean. |
+
+**Outer ring — ownership tier.** Identifies which of your git profiles
+the repo belongs to. Tier is resolved (in order) from the owner slug in
+`git remote get-url origin`, then `git config user.name`, then
+`git config user.email`. The mapping lives in
+`~/.config/nautilus-folder-icons/git-emblems.conf` (see [Configuring
+ownership](#configuring-ownership)).
+
+| Ring color | Tier      | What it means                                     |
+|------------|-----------|---------------------------------------------------|
+| gold       | primary   | Your main profile — repos you own.                |
+| cyan       | secondary | Your second profile.                              |
+| purple     | tertiary  | Your third profile.                               |
+| faint gray | external  | Doesn't match any of your profiles (third-party). |
+
+So a green dot in a gold ring means "ahead under primary" — your main
+profile has unpushed commits. A white dot with a faint gray ring is a
+clean third-party clone.
 
 Emblems update live: each repo's `.git/` directory is watched via
 `Gio.FileMonitor`, so commits, stages, fetches, and branch switches
-trigger a re-render within a fraction of a second. No polling, no
-systemd timer.
+trigger a re-render within a fraction of a second. The config file is
+watched too — edit it and the emblems re-tier without restarting
+Nautilus. No polling, no systemd timer.
+
+## Configuring ownership
+
+`install.sh` seeds `~/.config/nautilus-folder-icons/git-emblems.conf`
+on first run. Format is one line per tier:
+
+```ini
+# Comma-separated identifiers per tier. Matched case-insensitively
+# against the origin owner slug, then user.name, then user.email.
+primary   = iraum, iraumbo@gmail.com
+secondary = x42i
+tertiary  = iraum-oracle
+```
+
+Anything not listed is rendered as `external`. Save the file and
+emblems repaint within a fraction of a second; no restart needed.
 
 ## Right-click menu
 
@@ -53,6 +90,8 @@ Right-click any repo folder → **Properties** → **Git** tab. Shows:
 
 - **Status** — clean / dirty (with staged / modified / untracked /
   unmerged counts) / ahead / behind.
+- **Identity** — the slug used to assign the tier and the resulting
+  tier name (e.g. `iraum (primary)` or `some-org (external)`).
 - **Branch** — current branch name (or `(detached)`).
 - **Upstream** — tracked remote branch with ahead/behind counts.
 - **Origin** — `origin` remote URL.
@@ -73,10 +112,15 @@ sudo dnf install -y nautilus-python   # needs ol9_developer_EPEL enabled
 The installer copies:
 
 - `git-emblems.py` → `~/.local/share/nautilus-python/extensions/`
-- `icons/emblem-*.svg` → `~/.local/share/icons/hicolor/scalable/emblems/`
+- `icons/emblem-git-*.svg` → `~/.local/share/icons/hicolor/scalable/emblems/`
+  (16 emblems: 4 statuses × 4 tiers)
+- A starter `git-emblems.conf` → `~/.config/nautilus-folder-icons/`,
+  but only if no config exists already (it never overwrites yours).
 
 …then refreshes the GTK icon cache and restarts Nautilus if it's
-already running.
+already running. Re-run the installer any time you edit
+`icons/generate.py` to regenerate the SVGs first
+(`python3 icons/generate.py`).
 
 ## How it works
 
@@ -128,7 +172,8 @@ staleness concerns.
 
 ```bash
 rm ~/.local/share/nautilus-python/extensions/git-emblems.py
-rm ~/.local/share/icons/hicolor/scalable/emblems/emblem-git-{clean,dirty,ahead,behind}.svg
+rm ~/.local/share/icons/hicolor/scalable/emblems/emblem-git-*.svg
+rm -rf ~/.config/nautilus-folder-icons      # only if you also want to drop the config
 gtk-update-icon-cache -f ~/.local/share/icons/hicolor
 nautilus -q
 ```

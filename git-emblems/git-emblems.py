@@ -1,13 +1,22 @@
 """
 Nautilus extension: live git status emblems on folder icons.
 
-Every folder that is a git repo root gets exactly one small emblem.
-The emblem's color encodes the repo's state, with this priority:
+Each git-repo folder gets exactly one emblem encoding two signals on a single
+canvas:
 
-  dirty  (uncommitted changes)         -> "git-dirty"   (orange)
-  behind (upstream has unpulled work)  -> "git-behind"  (red)
-  ahead  (local commits not pushed)    -> "git-ahead"   (green)
-  clean  (in sync, nothing to do)      -> "git-clean"   (white)
+  * inner dot   — repo state, with priority dirty > behind > ahead > clean
+                  (orange / red / green / white)
+  * outer ring  — ownership tier: which of the user's git profiles the repo
+                  belongs to (primary / secondary / tertiary / external)
+
+Tier is derived (in order of preference) from:
+  1. owner slug parsed out of `git remote get-url origin`
+  2. `git config user.name` (for purely local repos with no origin)
+  3. `git config user.email` (last-resort fallback)
+
+The mapping from identifier -> tier is read from
+~/.config/nautilus-folder-icons/git-emblems.conf. The file is watched via
+Gio.FileMonitor; edits take effect on the next emblem refresh.
 
 Cooperates with folder-icon.sh — emblems are composited by Nautilus on top of
 whatever the folder's icon resolves to, including custom-icon PNGs.
@@ -44,6 +53,71 @@ from gi.repository import Nautilus, GObject, GLib, Gio, Gtk  # noqa: E402
 GIT_BIN = 'git'
 GIT_TIMEOUT_SEC = 2
 
+CONFIG_PATH = os.path.expanduser(
+    '~/.config/nautilus-folder-icons/git-emblems.conf'
+)
+
+
+def _load_owner_config(path):
+    """Parse the ownership config into {identifier_lower: tier_str}.
+
+    File format (lines starting with # are comments):
+
+      primary   = iraum, iraumbo@gmail.com
+      secondary = x42i
+      tertiary  = iraum-oracle
+
+    Each value is a comma-separated list of owner slugs and/or emails.
+    Identifiers not listed in any tier fall through to 'external' at
+    lookup time.
+    """
+    mapping = {}
+    try:
+        with open(path, 'r') as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' not in line:
+                    continue
+                key, val = line.split('=', 1)
+                tier = key.strip().lower()
+                if tier not in ('primary', 'secondary', 'tertiary'):
+                    continue
+                for raw in val.split(','):
+                    name = raw.strip().lower()
+                    if name:
+                        mapping[name] = tier
+    except OSError:
+        pass
+    return mapping
+
+
+def _parse_origin_owner(url):
+    """Extract the owner slug from a remote URL, or None if unparseable.
+
+    Handles HTTPS (https://host/OWNER/repo[.git]), SSH (git@host:OWNER/repo),
+    ssh:// URLs, and trailing .git stripping.
+    """
+    if not url:
+        return None
+    s = url.strip()
+    if s.endswith('.git'):
+        s = s[:-4]
+    # SSH "git@host:owner/repo" form has no scheme but contains ':'.
+    if '://' not in s and ':' in s:
+        path = s.split(':', 1)[1]
+    else:
+        try:
+            path = urlparse(s).path
+        except Exception:
+            return None
+    path = path.lstrip('/')
+    if not path:
+        return None
+    first = path.split('/', 1)[0]
+    return first or None
+
 
 class GitEmblemsProvider(GObject.GObject,
                          Nautilus.InfoProvider,
@@ -55,6 +129,9 @@ class GitEmblemsProvider(GObject.GObject,
         self._files = {}      # path -> Nautilus.FileInfo (for invalidation)
         self._monitors = {}   # path -> [Gio.FileMonitor, ...]
         self._lock = threading.Lock()
+        self._owner_map = _load_owner_config(CONFIG_PATH)
+        self._config_monitor = None
+        self._watch_config()
 
     # ---- Nautilus entry point ----------------------------------------------
 
@@ -107,7 +184,7 @@ class GitEmblemsProvider(GObject.GObject,
                 pass
 
         monitors = []
-        # .git/ root catches HEAD, index, FETCH_HEAD, packed-refs.
+        # .git/ root catches HEAD, index, FETCH_HEAD, packed-refs, config.
         # refs/heads + refs/remotes catch branch updates that don't touch root.
         for sub in ('', 'refs/heads', 'refs/remotes'):
             mon_path = os.path.join(git_path, sub) if sub else git_path
@@ -138,9 +215,42 @@ class GitEmblemsProvider(GObject.GObject,
             pass
         return False  # don't repeat
 
+    def _watch_config(self):
+        cfg_dir = os.path.dirname(CONFIG_PATH)
+        try:
+            os.makedirs(cfg_dir, exist_ok=True)
+        except OSError:
+            return
+        try:
+            gfile = Gio.File.new_for_path(CONFIG_PATH)
+            # monitor_file fires whether or not the file currently exists, so
+            # editing or first-time-creating the config triggers a reload.
+            monitor = gfile.monitor_file(Gio.FileMonitorFlags.NONE, None)
+        except GLib.Error:
+            return
+        monitor.connect('changed', self._on_config_changed)
+        self._config_monitor = monitor
+
+    def _on_config_changed(self, monitor, gfile, other_file, event_type):
+        self._owner_map = _load_owner_config(CONFIG_PATH)
+        with self._lock:
+            paths = list(self._files.keys())
+            self._cache.clear()
+        for p in paths:
+            f = self._files.get(p)
+            if f is not None:
+                GLib.idle_add(self._invalidate, f)
+
     # ---- git ----------------------------------------------------------------
 
     def _compute_emblems(self, path):
+        status = self._compute_status(path)
+        if status is None:
+            return []
+        _, tier, _ = self._identify(path)
+        return [f'git-{status}-{tier}']
+
+    def _compute_status(self, path):
         try:
             out = subprocess.check_output(
                 [GIT_BIN, '-C', path, 'status', '--porcelain=v2', '--branch'],
@@ -148,7 +258,7 @@ class GitEmblemsProvider(GObject.GObject,
             ).decode('utf-8', 'replace')
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
                 FileNotFoundError):
-            return []
+            return None
 
         ahead = behind = 0
         dirty = False
@@ -166,12 +276,43 @@ class GitEmblemsProvider(GObject.GObject,
                 dirty = True
 
         if dirty:
-            return ['git-dirty']
+            return 'dirty'
         if behind:
-            return ['git-behind']
+            return 'behind'
         if ahead:
-            return ['git-ahead']
-        return ['git-clean']
+            return 'ahead'
+        return 'clean'
+
+    def _identify(self, path):
+        """Return (identifier, tier, source).
+
+        - tier ∈ {primary, secondary, tertiary, external}
+        - source ∈ {origin, user.name, user.email, unmatched}
+        - identifier is whatever string was used to assign the tier (or, for
+          unmatched, the best fallback for display).
+
+        Origin wins when present: a clone of github.com/some-stranger/foo is
+        external regardless of which local user.email was configured to
+        commit to it. user.name / user.email matter only for purely local
+        repos that never gained an origin.
+        """
+        url = self._run_git(path, ['remote', 'get-url', 'origin']).strip()
+        if url:
+            slug = _parse_origin_owner(url)
+            if slug:
+                tier = self._owner_map.get(slug.lower(), 'external')
+                return (slug, tier, 'origin')
+        name = self._run_git(path, ['config', 'user.name']).strip()
+        if name:
+            tier = self._owner_map.get(name.lower())
+            if tier:
+                return (name, tier, 'user.name')
+        email = self._run_git(path, ['config', 'user.email']).strip()
+        if email:
+            tier = self._owner_map.get(email.lower())
+            if tier:
+                return (email, tier, 'user.email')
+        return (name or email or '', 'external', 'unmatched')
 
     # ---- Properties dialog: "Git" tab --------------------------------------
 
@@ -200,6 +341,7 @@ class GitEmblemsProvider(GObject.GObject,
             'ahead': 0, 'behind': 0,
             'staged': 0, 'modified': 0, 'untracked': 0, 'unmerged': 0,
             'origin_url': None, 'last_commit': None,
+            'identity': None, 'tier': None, 'identity_source': None,
         }
         out = self._run_git(path, ['status', '--porcelain=v2', '--branch'])
         for line in out.splitlines():
@@ -233,6 +375,11 @@ class GitEmblemsProvider(GObject.GObject,
             path, ['log', '-1', '--pretty=format:%s  —  %cr'],
         ).strip()
         info['last_commit'] = last or None
+
+        ident, tier, src = self._identify(path)
+        info['identity'] = ident or None
+        info['tier'] = tier
+        info['identity_source'] = src
         return info
 
     def _run_git(self, path, args):
@@ -289,6 +436,7 @@ class GitEmblemsProvider(GObject.GObject,
 
     def _build_menu_items(self, info):
         rows = []
+        rows.append(('identity', f'Identity: {self._format_identity(info)}'))
         rows.append(('branch', f'Branch: {info["branch"] or "(unknown)"}'))
         if info['upstream']:
             up = info['upstream']
@@ -314,6 +462,11 @@ class GitEmblemsProvider(GObject.GObject,
             items.append(it)
         return items
 
+    def _format_identity(self, info):
+        ident = info['identity'] or '—'
+        tier = info['tier'] or 'external'
+        return f'{ident} ({tier})'
+
     # ---- Properties dialog page builder ------------------------------------
 
     def _build_property_page(self, info):
@@ -333,7 +486,11 @@ class GitEmblemsProvider(GObject.GObject,
         else:
             status = 'Clean'
 
-        rows = [('Status', status), ('Branch', info['branch'] or '(unknown)')]
+        rows = [
+            ('Status', status),
+            ('Identity', self._format_identity(info)),
+            ('Branch', info['branch'] or '(unknown)'),
+        ]
         if info['upstream']:
             up = info['upstream']
             if info['ahead'] or info['behind']:

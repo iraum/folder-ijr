@@ -15,14 +15,18 @@ live git-status dot on every git repository.
   diagnostic screenshots don't get committed. The script auto-detects the system's
   Adwaita folder as its base, so no base PNG needs to be tracked.
 - `git-emblems/` — independent Nautilus Python extension that overlays
-  a single live git-status dot on every git-repo folder. Color encodes
-  state with a fixed priority: dirty (orange) > behind (red) > ahead
-  (green) > clean (white). Exactly one emblem per repo; no stacking.
-  Adds a "Git" submenu to the right-click context menu (headline +
-  full breakdown) and a matching "Git" tab to the Properties dialog.
-  Sits on top of `folder-icon.sh` output without modifying it. Has its
-  own README and installer; see `git-emblems/README.md`. Requires the
-  `nautilus-python` package from EPEL — same repo as ImageMagick.
+  a single live git emblem on every git-repo folder. The emblem is one
+  layered artwork: an inner dot encodes status with fixed priority
+  (dirty (orange) > behind (red) > ahead (green) > clean (white)) and
+  an outer ring encodes ownership tier (primary / secondary / tertiary
+  / external). Tier comes from the user's profile config at
+  `~/.config/nautilus-folder-icons/git-emblems.conf`. Exactly one
+  emblem per repo; no stacking. Adds a "Git" submenu to the right-click
+  context menu (headline + full breakdown, including identity) and a
+  matching "Git" tab to the Properties dialog. Sits on top of
+  `folder-icon.sh` output without modifying it. Has its own README and
+  installer; see `git-emblems/README.md`. Requires the `nautilus-python`
+  package from EPEL — same repo as ImageMagick.
 
 ## Usage
 
@@ -151,9 +155,31 @@ parent folder in Nautilus to see the dots; right-click a repo folder
 - **Single emblem per repo, fixed priority.** dirty > behind > ahead
   > clean. The user explicitly chose color-only over multi-emblem
   stacks. Don't reintroduce stacking; it conflicts with that
-  decision. If a github-remote indicator (or similar) is wanted
-  back, make it a *separate* corner emblem so the four status
-  colors stay mutually exclusive.
+  decision. The ownership tier was added by *layering* (a ring around
+  the status dot in the same SVG), not by adding a second emblem —
+  this preserves the single-emblem rule. If another signal is wanted
+  later, prefer extending the same emblem layer-wise over emitting a
+  second emblem.
+- **Ownership tiers: 4 (primary/secondary/tertiary/external) encoded
+  as a ring around the status dot.** The mapping from identifier to
+  tier lives in `~/.config/nautilus-folder-icons/git-emblems.conf`,
+  keyed by either GitHub owner slug, `user.name`, or `user.email`
+  (lookup is case-insensitive). Detection priority is **origin URL
+  owner > user.name > user.email**: a clone of someone else's repo
+  is "external" regardless of which local profile committed to it.
+  Origin is the source of truth for ownership; user.name/email only
+  matter for purely-local repos that have no origin. The config is
+  watched via `Gio.FileMonitor` (`monitor_file`, which fires whether
+  or not the file exists) so edits repaint emblems within a fraction
+  of a second.
+- **`icons/generate.py` is the source of truth for emblem artwork.**
+  Edit colors / ring widths / dot radii there, run
+  `python3 icons/generate.py` from the `icons/` directory, and the
+  16 SVGs (4 statuses × 4 tiers) regenerate. The generated SVGs are
+  committed alongside the generator so the install path doesn't
+  require running Python at install time and so the artwork is
+  inspectable on the forge UI. Do not hand-edit the SVGs — re-run
+  the generator instead.
 - **`.git` as a file is supported** (worktrees and submodules — a
   text file with `gitdir: <path>`). The recognition check is
   `os.path.exists(.git)`, not `isdir`. The `Gio.FileMonitor` follows
