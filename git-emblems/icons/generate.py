@@ -39,10 +39,13 @@ TIER_DOT_COLORS = {
 # softened so it doesn't read as harsh at small render sizes.
 STROKE = '#1a1a1a'
 
+# Inner tier dot is nudged ~2px down-right from the disk center. Just enough
+# offset to read as deliberate without breaking the eye's read of "centered
+# inside the status disk".
 SVG_WITH_TIER = '''<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <circle cx="32" cy="32" r="10" fill="{dot}" stroke="{stroke}" stroke-width="1.25" stroke-opacity="0.6"/>
-  <circle cx="32" cy="32" r="5"  fill="{tier}" stroke="{stroke}" stroke-width="1.2"  stroke-opacity="0.85"/>
+  <circle cx="34" cy="34" r="5"  fill="{tier}" stroke="{stroke}" stroke-width="1.2"  stroke-opacity="0.85"/>
 </svg>
 '''
 
