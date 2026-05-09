@@ -16,17 +16,18 @@ live git-status dot on every git repository.
   Adwaita folder as its base, so no base PNG needs to be tracked.
 - `git-emblems/` — independent Nautilus Python extension that overlays
   a single live git emblem on every git-repo folder. The emblem is one
-  layered artwork: an inner dot encodes status with fixed priority
+  layered artwork: an outer disk encodes status with fixed priority
   (dirty (orange) > behind (red) > ahead (green) > clean (white)) and
-  an outer ring encodes ownership tier (primary / secondary / tertiary
-  / external). Tier comes from the user's profile config at
-  `~/.config/nautilus-folder-icons/git-emblems.conf`. Exactly one
-  emblem per repo; no stacking. Adds a "Git" submenu to the right-click
-  context menu (headline + full breakdown, including identity) and a
-  matching "Git" tab to the Properties dialog. Sits on top of
-  `folder-icon.sh` output without modifying it. Has its own README and
-  installer; see `git-emblems/README.md`. Requires the `nautilus-python`
-  package from EPEL — same repo as ImageMagick.
+  a small black-outlined inner dot encodes ownership tier (primary /
+  secondary / tertiary). The 'external' tier renders as the plain
+  status disk with no inner dot. Tier comes from the user's profile
+  config at `~/.config/nautilus-folder-icons/git-emblems.conf`.
+  Exactly one emblem per repo; no stacking. Adds a "Git" submenu to
+  the right-click context menu (headline + full breakdown, including
+  identity) and a matching "Git" tab to the Properties dialog. Sits on
+  top of `folder-icon.sh` output without modifying it. Has its own
+  README and installer; see `git-emblems/README.md`. Requires the
+  `nautilus-python` package from EPEL — same repo as ImageMagick.
 
 ## Usage
 
@@ -155,18 +156,23 @@ parent folder in Nautilus to see the dots; right-click a repo folder
 - **Single emblem per repo, fixed priority.** dirty > behind > ahead
   > clean. The user explicitly chose color-only over multi-emblem
   stacks. Don't reintroduce stacking; it conflicts with that
-  decision. The ownership tier was added by *layering* (a ring around
-  the status dot in the same SVG), not by adding a second emblem —
-  this preserves the single-emblem rule. If another signal is wanted
-  later, prefer extending the same emblem layer-wise over emitting a
-  second emblem.
+  decision. The ownership tier was added by *layering* (a small black-
+  outlined dot at the center of the status disk in the same SVG), not
+  by adding a second emblem — this preserves the single-emblem rule.
+  If another signal is wanted later, prefer extending the same emblem
+  layer-wise over emitting a second emblem.
 - **Ownership tiers: 4 (primary/secondary/tertiary/external) encoded
-  as a ring around the status dot.** The mapping from identifier to
-  tier lives in `~/.config/nautilus-folder-icons/git-emblems.conf`,
-  keyed by either GitHub owner slug, `user.name`, or `user.email`
-  (lookup is case-insensitive). Detection priority is **origin URL
-  owner > user.name > user.email**: a clone of someone else's repo
-  is "external" regardless of which local profile committed to it.
+  as a small inner dot inside the status disk.** The status disk stays
+  the dominant visual (its color reads as a ring around the inner
+  dot); the inner dot identifies which profile owns the repo. The
+  'external' tier renders without an inner dot — a plain status disk
+  signals "no ownership to declare", matching the pre-ownership look.
+  The mapping from identifier to tier lives in
+  `~/.config/nautilus-folder-icons/git-emblems.conf`, keyed by either
+  GitHub owner slug, `user.name`, or `user.email` (lookup is
+  case-insensitive). Detection priority is **origin URL owner >
+  user.name > user.email**: a clone of someone else's repo is
+  "external" regardless of which local profile committed to it.
   Origin is the source of truth for ownership; user.name/email only
   matter for purely-local repos that have no origin. The config is
   watched via `Gio.FileMonitor` (`monitor_file`, which fires whether

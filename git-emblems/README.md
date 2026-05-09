@@ -5,7 +5,7 @@ all driven by the same data:
 
 - **Emblems** — a single combined indicator composited onto the
   folder icon for every git repo, updated live. Encodes both **status**
-  (inner dot color) and **ownership tier** (outer ring color).
+  (outer disk color) and **ownership tier** (small inner dot color).
 - **Right-click menu** — a `Git — <state>` submenu with the
   one-line headline plus the full breakdown.
 - **Properties → Git tab** — the same breakdown rendered as a
@@ -19,8 +19,9 @@ by that script.
 
 Every git repo root gets exactly **one** emblem with two layers:
 
-**Inner dot — status.** When several states are true at once, the most
-actionable one wins (dirty beats behind beats ahead).
+**Outer disk — status.** Fills the emblem with the status color; when
+several states are true at once, the most actionable one wins (dirty
+beats behind beats ahead).
 
 | Color   | Meaning                                            |
 |---------|----------------------------------------------------|
@@ -29,23 +30,24 @@ actionable one wins (dirty beats behind beats ahead).
 | green   | Local branch has commits not in upstream.          |
 | white   | Repo is in sync with upstream, working tree clean. |
 
-**Outer ring — ownership tier.** Identifies which of your git profiles
-the repo belongs to. Tier is resolved (in order) from the owner slug in
-`git remote get-url origin`, then `git config user.name`, then
-`git config user.email`. The mapping lives in
-`~/.config/nautilus-folder-icons/git-emblems.conf` (see [Configuring
-ownership](#configuring-ownership)).
+**Inner dot — ownership tier.** A small black-outlined dot in the
+center of the status disk identifies which of your git profiles the
+repo belongs to. The status color stays visible as a ring around it.
+Tier is resolved (in order) from the owner slug in `git remote get-url
+origin`, then `git config user.name`, then `git config user.email`.
+The mapping lives in `~/.config/nautilus-folder-icons/git-emblems.conf`
+(see [Configuring ownership](#configuring-ownership)).
 
-| Ring color | Tier      | What it means                                     |
+| Center dot | Tier      | What it means                                     |
 |------------|-----------|---------------------------------------------------|
 | gold       | primary   | Your main profile — repos you own.                |
 | cyan       | secondary | Your second profile.                              |
 | purple     | tertiary  | Your third profile.                               |
-| faint gray | external  | Doesn't match any of your profiles (third-party). |
+| (none)     | external  | Doesn't match any of your profiles — plain status disk only. |
 
-So a green dot in a gold ring means "ahead under primary" — your main
-profile has unpushed commits. A white dot with a faint gray ring is a
-clean third-party clone.
+So a green disk with a gold center means "ahead under primary" — your
+main profile has unpushed commits. A plain white disk (no center dot)
+is a clean third-party clone.
 
 Emblems update live: each repo's `.git/` directory is watched via
 `Gio.FileMonitor`, so commits, stages, fetches, and branch switches

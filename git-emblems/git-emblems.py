@@ -4,10 +4,11 @@ Nautilus extension: live git status emblems on folder icons.
 Each git-repo folder gets exactly one emblem encoding two signals on a single
 canvas:
 
-  * inner dot   — repo state, with priority dirty > behind > ahead > clean
+  * outer disk  — repo state, with priority dirty > behind > ahead > clean
                   (orange / red / green / white)
-  * outer ring  — ownership tier: which of the user's git profiles the repo
-                  belongs to (primary / secondary / tertiary / external)
+  * inner dot   — ownership tier: which of the user's git profiles the repo
+                  belongs to (primary / secondary / tertiary). 'external'
+                  renders without an inner dot.
 
 Tier is derived (in order of preference) from:
   1. owner slug parsed out of `git remote get-url origin`
