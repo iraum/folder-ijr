@@ -20,8 +20,10 @@ live git-status dot on every git repository.
   (dirty (orange) > behind (red) > ahead (green) > clean (white)) and
   a small black-outlined inner dot encodes ownership tier (primary /
   secondary / tertiary). The 'external' tier renders as the plain
-  status disk with no inner dot. Tier comes from the user's profile
-  config at `~/.config/nautilus-folder-icons/git-emblems.conf`.
+  status disk with no inner dot. The inner dot's outline switches to a
+  bolder crimson stroke for tiered repos with no remote configured, so
+  purely-local repos read at a glance. Tier comes from the user's
+  profile config at `~/.config/nautilus-folder-icons/git-emblems.conf`.
   Exactly one emblem per repo; no stacking. Adds a "Git" submenu to
   the right-click context menu (headline + full breakdown, including
   identity) and a matching "Git" tab to the Properties dialog. Sits on
@@ -178,6 +180,16 @@ parent folder in Nautilus to see the dots; right-click a repo folder
   watched via `Gio.FileMonitor` (`monitor_file`, which fires whether
   or not the file exists) so edits repaint emblems within a fraction
   of a second.
+- **No-remote signal: bolder crimson outline on the inner tier dot.**
+  Computed from `git remote` (any remote, not just origin), so a repo
+  with only an `upstream` remote still counts as "has a remote". When
+  a tiered repo has no remotes at all, the inner dot's outline is
+  swapped from soft near-black (`#1a1a1a`) to a bolder crimson
+  (`#e11d48`) at 2.0px stroke. External repos don't participate —
+  there's no inner dot to outline. This adds 12 SVG variants
+  (4 statuses × 3 tiers, with `-noremote` filename suffix), bringing
+  the total to 28 emblems. The signal also surfaces in the menu /
+  Properties Identity row as `iraum (primary, no remote)`.
 - **`icons/generate.py` is the source of truth for emblem artwork.**
   Edit colors / ring widths / dot radii there, run
   `python3 icons/generate.py` from the `icons/` directory, and the

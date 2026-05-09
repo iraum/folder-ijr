@@ -45,9 +45,17 @@ The mapping lives in `~/.config/nautilus-folder-icons/git-emblems.conf`
 | purple     | tertiary  | Your third profile.                               |
 | (none)     | external  | Doesn't match any of your profiles — plain status disk only. |
 
+**No-remote signal.** When a tiered repo has no remote configured
+(`git remote` returns nothing), the inner dot's outline switches to a
+bolder crimson stroke instead of the normal soft black. This flags
+repos that exist purely on your machine — owned but not pushed
+anywhere yet — without changing the tier color. External repos don't
+participate in this signal: they have no inner dot to outline.
+
 So a green disk with a gold center means "ahead under primary" — your
-main profile has unpushed commits. A plain white disk (no center dot)
-is a clean third-party clone.
+main profile has unpushed commits. The same gold center with a red
+outline means "this is yours, primary tier, and there's no remote at
+all". A plain white disk (no center dot) is a clean third-party clone.
 
 Emblems update live: each repo's `.git/` directory is watched via
 `Gio.FileMonitor`, so commits, stages, fetches, and branch switches
@@ -93,7 +101,8 @@ Right-click any repo folder → **Properties** → **Git** tab. Shows:
 - **Status** — clean / dirty (with staged / modified / untracked /
   unmerged counts) / ahead / behind.
 - **Identity** — the slug used to assign the tier and the resulting
-  tier name (e.g. `iraum (primary)` or `some-org (external)`).
+  tier name (e.g. `iraum (primary)` or `some-org (external)`). When
+  the repo has no remote, `, no remote` is appended.
 - **Branch** — current branch name (or `(detached)`).
 - **Upstream** — tracked remote branch with ahead/behind counts.
 - **Origin** — `origin` remote URL.
@@ -115,7 +124,7 @@ The installer copies:
 
 - `git-emblems.py` → `~/.local/share/nautilus-python/extensions/`
 - `icons/emblem-git-*.svg` → `~/.local/share/icons/hicolor/scalable/emblems/`
-  (16 emblems: 4 statuses × 4 tiers)
+  (28 emblems: 4 statuses × 3 tiers × 2 remote-states + 4 statuses × external)
 - A starter `git-emblems.conf` → `~/.config/nautilus-folder-icons/`,
   but only if no config exists already (it never overwrites yours).
 

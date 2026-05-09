@@ -8,7 +8,9 @@ canvas:
                   (orange / red / green / white)
   * inner dot   — ownership tier: which of the user's git profiles the repo
                   belongs to (primary / secondary / tertiary). 'external'
-                  renders without an inner dot.
+                  renders without an inner dot. The inner dot's outline
+                  switches to a bolder crimson stroke when the repo has no
+                  remote configured — flags purely-local repos at a glance.
 
 Tier is derived (in order of preference) from:
   1. owner slug parsed out of `git remote get-url origin`
@@ -248,7 +250,11 @@ class GitEmblemsProvider(GObject.GObject,
         status = self._compute_status(path)
         if status is None:
             return []
-        _, tier, _ = self._identify(path)
+        _, tier, _, has_remote = self._identify(path)
+        # External has no inner dot, so the no-remote outline doesn't apply
+        # there. For tiered repos, missing remote -> bolder crimson outline.
+        if tier in ('primary', 'secondary', 'tertiary') and not has_remote:
+            return [f'git-{status}-{tier}-noremote']
         return [f'git-{status}-{tier}']
 
     def _compute_status(self, path):
@@ -285,35 +291,41 @@ class GitEmblemsProvider(GObject.GObject,
         return 'clean'
 
     def _identify(self, path):
-        """Return (identifier, tier, source).
+        """Return (identifier, tier, source, has_remote).
 
         - tier ∈ {primary, secondary, tertiary, external}
         - source ∈ {origin, user.name, user.email, unmatched}
         - identifier is whatever string was used to assign the tier (or, for
           unmatched, the best fallback for display).
+        - has_remote is True iff `git remote` lists at least one remote.
 
         Origin wins when present: a clone of github.com/some-stranger/foo is
         external regardless of which local user.email was configured to
         commit to it. user.name / user.email matter only for purely local
-        repos that never gained an origin.
+        repos that never gained an origin. has_remote is reported separately
+        from source because a repo can have a non-origin remote (e.g. only
+        an "upstream" remote configured) — that still counts as "has a
+        remote" for the visual no-remote signal.
         """
+        remotes = self._run_git(path, ['remote']).strip()
+        has_remote = bool(remotes)
         url = self._run_git(path, ['remote', 'get-url', 'origin']).strip()
         if url:
             slug = _parse_origin_owner(url)
             if slug:
                 tier = self._owner_map.get(slug.lower(), 'external')
-                return (slug, tier, 'origin')
+                return (slug, tier, 'origin', has_remote)
         name = self._run_git(path, ['config', 'user.name']).strip()
         if name:
             tier = self._owner_map.get(name.lower())
             if tier:
-                return (name, tier, 'user.name')
+                return (name, tier, 'user.name', has_remote)
         email = self._run_git(path, ['config', 'user.email']).strip()
         if email:
             tier = self._owner_map.get(email.lower())
             if tier:
-                return (email, tier, 'user.email')
-        return (name or email or '', 'external', 'unmatched')
+                return (email, tier, 'user.email', has_remote)
+        return (name or email or '', 'external', 'unmatched', has_remote)
 
     # ---- Properties dialog: "Git" tab --------------------------------------
 
@@ -343,6 +355,7 @@ class GitEmblemsProvider(GObject.GObject,
             'staged': 0, 'modified': 0, 'untracked': 0, 'unmerged': 0,
             'origin_url': None, 'last_commit': None,
             'identity': None, 'tier': None, 'identity_source': None,
+            'has_remote': True,
         }
         out = self._run_git(path, ['status', '--porcelain=v2', '--branch'])
         for line in out.splitlines():
@@ -377,10 +390,11 @@ class GitEmblemsProvider(GObject.GObject,
         ).strip()
         info['last_commit'] = last or None
 
-        ident, tier, src = self._identify(path)
+        ident, tier, src, has_remote = self._identify(path)
         info['identity'] = ident or None
         info['tier'] = tier
         info['identity_source'] = src
+        info['has_remote'] = has_remote
         return info
 
     def _run_git(self, path, args):
@@ -466,7 +480,10 @@ class GitEmblemsProvider(GObject.GObject,
     def _format_identity(self, info):
         ident = info['identity'] or '—'
         tier = info['tier'] or 'external'
-        return f'{ident} ({tier})'
+        parts = [tier]
+        if info.get('has_remote') is False:
+            parts.append('no remote')
+        return f'{ident} ({", ".join(parts)})'
 
     # ---- Properties dialog page builder ------------------------------------
 
